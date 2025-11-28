@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FChFP 財務健診報告書</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            /* Palette */
+            --primary-dark: #2c3e50;
+            --primary-light: #34495e;
+            --accent-color: #f6c23e;
+            --bg-body: #f4f6f9;
+            --bg-card: #ffffff;
+            --border-color: #d1d3e2;
+            
+            /* Colors */
+            --color-income: #0061f2; --color-expense: #f4a100; --color-variable: #e81500; 
+            --color-asset: #00ac69; --color-liab: #e81500; --color-retire: #6f42c1;
+
+            --radius: 8px;
+            --shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+
+        body { font-family: "Microsoft JhengHei", "Segoe UI", Helvetica, Arial, sans-serif; background-color: var(--bg-body); color: #5a5c69; margin: 0; padding: 20px; padding-bottom: 80px; font-size: 15px; }
+        .container { max-width: 1280px; margin: 0 auto; }
+
+        /* --- UI Elements (Screen Only) --- */
+        .header-wrap { 
+            background: #fff; padding: 20px 25px; border-radius: var(--radius); 
+            box-shadow: var(--shadow); margin-bottom: 20px; 
+            border-left: 5px solid var(--primary-dark); 
+            display: flex; justify-content: space-between; align-items: center; 
+        }
+        .header-wrap h1 { margin: 0; color: var(--primary-dark); font-size: 1.6rem; }
+        
+        .action-buttons { display: flex; gap: 10px; }
+        .btn-action { 
+            color: #fff; border: none; padding: 8px 18px; border-radius: 4px; font-weight: bold; 
+            cursor: pointer; transition: 0.2s; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;
+        }
+        .btn-print { background: #2c3e50; } 
+        .btn-save { background: #1cc88a; } 
+        .btn-load { background: #4e73df; }
+        .btn-clear { background: #e74a3b; }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;}
+        .tab-btn { 
+            background: #e2e6ea; border: none; padding: 10px 25px; border-radius: 50px; 
+            color: #6c757d; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 1rem; 
+        }
+        .tab-btn.active { background: var(--primary-dark); color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        .section { display: none; animation: fadeIn 0.3s; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Layouts & Components --- */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .bs-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+        .compact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .retire-split-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); display: flex; flex-direction: column; height: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card-header { padding: 12px 20px; background: #f8f9fc; border-bottom: 1px solid var(--border-color); font-weight: bold; color: var(--primary-dark); font-size: 1.1rem; border-top: 3px solid transparent; }
+        .border-profile { border-top-color: #36b9cc; } .border-income { border-top-color: var(--color-income); } .border-asset { border-top-color: var(--color-asset); } .border-liab { border-top-color: var(--color-liab); } .border-retire { border-top-color: var(--color-retire); } .border-consult { border-top-color: #5a5c69; }
+
+        .card-body { padding: 20px; flex-grow: 1; }
+        .card-footer { padding: 12px 20px; background: #f8f9fc; border-top: 1px solid var(--border-color); text-align: right; font-weight: bold; color: #5a5c69; font-size: 1rem; }
+
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 4px; color: #4e73df; font-size: 0.9rem; }
+        .help-text { font-size: 0.8rem; color: #858796; margin-top: 2px; display: block; }
+        .input-row { display: flex; gap: 10px; }
+        .input-wrapper { flex: 1; position: relative; }
+        .app-input { width: 100%; padding: 6px 10px; border: 1px solid #d1d3e2; border-radius: 4px; text-align: left; box-sizing: border-box; font-size: 1rem; color: #6e707e; }
+        .num-input { text-align: right; font-family: monospace; font-weight: bold; }
+        .input-wrapper::after { content: attr(data-unit); position: absolute; right: 8px; top: 7px; font-size: 0.8rem; color: #b7b9cc; pointer-events: none; }
+        textarea.app-input { height: 80px; resize: vertical; }
+
+        .total-card { background: #fff; padding: 15px; border-radius: var(--radius); box-shadow: var(--shadow); text-align: center; border-top: 4px solid #ccc; }
+        .tc-val { font-size: 1.8rem; font-weight: 800; margin-top: 5px; }
+        .tc-label { font-size: 0.9rem; color: #858796; font-weight: bold; }
+        
+        /* Dashboard */
+        .dash-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px; }
+        .report-card { background: #fff; border: 1px solid #e3e6f0; border-radius: var(--radius); overflow: hidden; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .rc-header { background: #f8f9fc; padding: 10px; font-weight: bold; color: #5a5c69; border-bottom: 1px solid #e3e6f0; }
+        .rc-body { padding: 15px; }
+        .rc-val { font-size: 2rem; font-weight: 800; margin: 10px 0; line-height: 1; }
+        .rc-def { font-size: 0.85rem; color: #858796; margin-bottom: 5px; display: block; }
+        .rc-formula { font-size: 0.75rem; color: #b0b2be; font-style: italic; }
+        .rc-footer { background: #eaecf4; padding: 8px; font-size: 0.85rem; font-weight: bold; color: #5a5c69; }
+        .text-green { color: #1cc88a; } .text-red { color: #e74a3b; }
+        
+        .warning-box { margin-top: 30px; border: 4px solid #e74a3b; background: #fff5f5; padding: 25px; text-align: center; display: none; border-radius: 8px; }
+        .wb-title { color: #e74a3b; font-weight: bold; font-size: 1.3rem; margin-bottom: 15px; }
+        .wb-footer { font-size: 1.4rem; font-weight: 900; color: #e74a3b; margin-top: 20px; }
+
+        .retire-table-container { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 15px; overflow-x: auto; border-top: 4px solid #ccc; height: 350px; }
+        .rt-acc { border-top-color: #1cc88a; } .rt-dec { border-top-color: #e74a3b; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { background: #f8f9fc; color: #5a5c69; padding: 10px; text-align: right; font-weight: bold; border-bottom: 2px solid #e3e6f0; position: sticky; top: 0; }
+        td { padding: 8px 10px; border-bottom: 1px solid #e3e6f0; text-align: right; color: #5a5c69; font-family: monospace; }
+        
+        .chart-container { background: #fff; padding: 15px; border-radius: var(--radius); box-shadow: var(--shadow); margin-top: 20px; height: 300px; position: relative; border: 1px solid #e3e6f0; }
+        
+        .nav-btn-container { margin-top: 20px; display: flex; justify-content: flex-end; }
+        .btn-next { background: #34495e; color: #fff; border: none; padding: 10px 25px; border-radius: 50px; cursor: pointer; font-weight: bold; }
+
+        /* Sticky Footer */
+        .sticky-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--primary-dark); color: #fff; padding: 12px 0; display: flex; justify-content: center; gap: 50px; font-size: 1.1rem; font-weight: bold; z-index: 999; box-shadow: 0 -4px 10px rgba(0,0,0,0.2); }
+        .sf-val { color: #f6c23e; margin-left: 5px; }
+
+        /* --- PRINT ONLY STYLES --- */
+        .cover-page { display: none; } /* Hidden on screen */
+        .print-header { display: none; } /* Hidden on screen */
+        .print-footer { display: none; } /* Hidden on screen */
+
+        @media print {
+            @page { margin: 10mm; size: A4; }
+            body { background: #fff; padding: 0; margin: 0; color: #000; }
+            .container { max-width: 100%; width: 100%; box-shadow: none; margin: 0; padding: 0; }
+            
+            /* Hide UI elements */
+            .tabs, .header-wrap, .sticky-footer, .btn-action, .nav-btn-container, .helper-bar { display: none !important; }
+            
+            /* Show All Sections */
+            .section { display: block !important; opacity: 1 !important; transform: none !important; page-break-after: always; }
+            .section:last-child { page-break-after: auto; }
+
+            /* Cover Page */
+            .cover-page { 
+                display: flex !important; flex-direction: column; justify-content: center; align-items: center; 
+                height: 100vh; page-break-after: always; text-align: center; border: 5px double #2c3e50; margin: 20px;
+            }
+            .cp-title { font-size: 36pt; font-weight: 900; color: #2c3e50; margin-bottom: 20px; }
+            .cp-subtitle { font-size: 18pt; color: #666; margin-bottom: 60px; }
+            .cp-box { border: 1px solid #ccc; padding: 40px; width: 70%; text-align: left; margin-bottom: 100px; }
+            .cp-row { font-size: 14pt; margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 5px; }
+            .cp-footer { font-size: 10pt; color: #999; }
+
+            /* Print Headers */
+            .print-header { 
+                display: block !important; 
+                font-size: 18pt; font-weight: bold; color: #2c3e50; 
+                border-bottom: 3px solid #f6c23e; padding-bottom: 10px; margin-bottom: 20px; 
+            }
+
+            /* Print Footer Disclaimer */
+            .print-footer {
+                display: block !important;
+                position: fixed; bottom: 0; left: 0; width: 100%;
+                font-size: 8pt; color: #888; text-align: center;
+                border-top: 1px solid #ccc; padding-top: 5px; background: #fff;
+            }
+
+            /* Adjust Layouts for Print */
+            .grid-2, .grid-3, .grid-4, .bs-layout, .compact-grid { grid-template-columns: 1fr 1fr !important; gap: 15px; }
+            .dash-grid { grid-template-columns: 1fr 1fr 1fr !important; gap: 10px; }
+            .card, .total-card, .report-card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+            .app-input { border: none; border-bottom: 1px solid #ccc; padding: 2px; }
+            .retire-table-container { height: auto; overflow: visible; }
+            .chart-container { height: 300px; break-inside: avoid; page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="cover-page">
+    <div class="cp-title">家庭財務健診報告書</div>
+    <div class="cp-subtitle">Financial Health Check Report (FChFP 3.2)</div>
+    <div class="cp-box">
+        <div class="cp-row"><strong>客戶姓名：</strong> <span id="cp-name"></span></div>
+        <div class="cp-row"><strong>財務顧問：</strong> <span id="cp-advisor"></span></div>
+        <div class="cp-row"><strong>報告日期：</strong> <span id="cp-date"></span></div>
+    </div>
+    <div class="cp-footer">本報告書含有個人財務隱私資訊，請妥善保管。</div>
+</div>
+
+<div class="container">
+    
+    <div class="header-wrap">
+        <div>
+            <h1>FChFP 財務健診系統 (專家顧問版)</h1>
+            <p>專業、精確、完整的家庭財務導航</p>
+        </div>
+        <div class="action-buttons">
+            <button class="btn-action btn-load" onclick="document.getElementById('fileInput').click()">📂 匯入</button>
+            <button class="btn-action btn-save" onclick="exportJson()">💾 匯出</button>
+            <button class="btn-action btn-print" onclick="window.print()">🖨️ 列印</button>
+            <button class="btn-action btn-clear" onclick="clearAllData()">🗑️ 清空</button>
+        </div>
+    </div>
+    <input type="file" id="fileInput" style="display: none;" onchange="importData(this)">
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-profile')">0. 基本資料</button>
+        <button class="tab-btn" onclick="switchTab('tab-income')">1. 收支管理</button>
+        <button class="tab-btn" onclick="switchTab('tab-assets')">2. 資產負債</button>
+        <button class="tab-btn" onclick="switchTab('tab-report')">3. 診斷報告</button>
+        <button class="tab-btn" onclick="switchTab('tab-retire')">4. 退休規劃</button>
+        <button class="tab-btn" onclick="switchTab('tab-consult')">5. 諮詢筆記</button>
+    </div>
+
+    <div id="tab-profile" class="section active">
+        <div class="print-header">壹、基本資料與目標</div>
+        <div class="stack-layout" style="display:flex; flex-direction:column; gap:20px;">
+            <div class="card">
+                <div class="card-header border-profile">🧑‍💼 客戶本人資料</div>
+                <div class="card-body">
+                    <div class="form-group"><label>姓名 Name</label><input type="text" id="pf_name" class="app-input" placeholder="請輸入姓名" oninput="updCP()"><small class="help-text">請填寫真實姓名</small></div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>年齡 Age</label><input type="text" id="pf_age" class="app-input" placeholder="實歲"><small class="help-text">評估退休年限</small></div>
+                        <div class="form-group"><label>職業 Job</label><input type="text" id="pf_job" class="app-input" placeholder="職稱"><small class="help-text">風險屬性參考</small></div>
+                    </div>
+                    <div class="form-group"><label>健診日期</label><input type="date" id="pf_date" class="app-input" oninput="updCP()"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header border-profile">👨‍👩‍👧‍👦 家庭成員</div>
+                <div class="card-body">
+                    <div class="grid-2">
+                        <div class="form-group"><label>配偶姓名</label><input type="text" id="pf_spouse" class="app-input"></div>
+                        <div class="form-group"><label>配偶職業/年齡</label><input type="text" id="pf_spouse_job" class="app-input" placeholder="30歲/家管"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>子女狀況</label><input type="text" id="pf_child" class="app-input" placeholder="1男1女"></div>
+                        <div class="form-group"><label>父母狀況</label><input type="text" id="pf_parents" class="app-input" placeholder="父退休"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>專屬顧問</label><input type="text" id="pf_advisor" class="app-input" value="黃威龍" oninput="updCP()"></div>
+                        <div class="form-group"><label>協同顧問</label><input type="text" id="pf_advisor2" class="app-input"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header border-profile">🎯 財務目標 (Goals)</div>
+                <div class="card-body"><textarea id="pf_goals" class="app-input" placeholder="例如：5年後買房..."></textarea></div>
+            </div>
+        </div>
+        <div class="nav-btn-container"><button class="btn-next" onclick="switchTab('tab-income')">下一步：收支管理 &gt;</button></div>
+    </div>
+
+    <div id="tab-income" class="section">
+        <div class="print-header">貳、收支管理分析</div>
+        <div class="grid-3">
+            <div class="card"><div class="card-header border-income">現金收入</div><div class="card-body" id="income-inputs"></div><div class="card-footer">總計: <span id="summary-income-m" style="color:var(--color-income)">$0</span></div></div>
+            <div class="card"><div class="card-header border-fixed">固定支出</div><div class="card-body" id="fixed-expense-inputs"></div><div class="card-footer">總計: <span id="summary-fixed-m" style="color:var(--color-expense)">$0</span></div></div>
+            <div class="card"><div class="card-header border-variable">非固定支出</div><div class="card-body" id="variable-expense-inputs"></div><div class="card-footer">總計: <span id="summary-variable-m" style="color:var(--color-variable)">$0</span></div></div>
+        </div>
+        <div class="chart-container" style="height:300px; margin-top:20px;"><canvas id="cashFlowChart"></canvas></div>
+        <div class="total-card" style="margin-top:20px; border-top-color:var(--color-income)"><span class="tc-label">每月淨現金流</span><div class="tc-val" id="print-net-flow" style="color:var(--color-income)">$0</div></div>
+        <div class="nav-btn-container"><button class="btn-next" onclick="switchTab('tab-assets')">下一步：資產負債 &gt;</button></div>
+    </div>
+
+    <div id="tab-assets" class="section">
+        <div class="print-header">參、資產負債表</div>
+        <div class="bs-layout">
+            <div class="bs-col">
+                <h3 style="margin:0; color:var(--color-asset); border-bottom:3px solid var(--color-asset);">🌱 資產 (Assets)</h3>
+                <div class="card"><div class="card-header border-asset">現金資產</div><div class="card-body"><div id="assets-cash-inputs" class="compact-grid"></div></div><div class="card-footer">總計: <span id="summary-asset-cash">$0</span></div></div>
+                <div class="card"><div class="card-header border-asset">自用資產</div><div class="card-body"><div id="assets-personal-inputs" class="compact-grid"></div></div><div class="card-footer">總計: <span id="summary-asset-personal">$0</span></div></div>
+                <div class="card"><div class="card-header border-asset">投資資產</div><div class="card-body"><div id="assets-invest-inputs" class="compact-grid"></div></div><div class="card-footer">總計: <span id="summary-asset-invest">$0</span></div></div>
+                <div class="total-card" style="border-top-color:var(--color-asset)"><span class="tc-label">資產總額</span><div class="tc-val" id="header-total-assets" style="color:var(--color-asset)">$0</div></div>
+            </div>
+            <div class="bs-col">
+                <h3 style="margin:0; color:var(--color-liab); border-bottom:3px solid var(--color-liab);">💸 負債 (Liabilities)</h3>
+                <div class="card"><div class="card-header border-liab">流動負債</div><div class="card-body"><div id="liab-current-inputs" class="compact-grid"></div></div><div class="card-footer">總計: <span id="summary-liab-current">$0</span></div></div>
+                <div class="card"><div class="card-header border-liab">長期負債</div><div class="card-body"><div id="liab-long-inputs" class="compact-grid"></div></div><div class="card-footer">總計: <span id="summary-liab-long">$0</span></div></div>
+                
+                <div class="chart-container" style="height:250px; margin-top:10px;"><canvas id="assetChart"></canvas></div>
+                
+                <div class="total-card" style="border-top-color:var(--color-liab); margin-top:10px;"><span class="tc-label">負債總額</span><div class="tc-val" id="header-total-liabilities" style="color:var(--color-liab)">$0</div></div>
+                <div class="total-card" style="border-top-color:#4e73df; margin-top:20px;"><span class="tc-label">淨值 Net Worth</span><div class="tc-val" id="summary-net-worth" style="color:#4e73df">$0</div></div>
+            </div>
+        </div>
+        <div class="nav-btn-container"><button class="btn-next" onclick="switchTab('tab-report')">下一步：診斷報告 &gt;</button></div>
+    </div>
+
+    <div id="tab-report" class="section">
+        <div class="print-header">肆、財務健康診斷</div>
+        <div class="dash-grid" id="dashboard"></div>
+        <div id="analysis-warning" class="warning-box"><div class="wb-title">⚠️ 財務紅燈警示項目</div><div id="red-flag-list"></div><div class="wb-footer">需要請財務顧問來協助您分析！！</div></div>
+        <div class="nav-btn-container"><button class="btn-next" onclick="switchTab('tab-retire')">下一步：退休規劃 &gt;</button></div>
+    </div>
+
+    <div id="tab-retire" class="section">
+        <div class="print-header">伍、退休規劃試算</div>
+        <div class="card" style="margin-bottom:20px;">
+            <div class="card-header border-retire">參數設定 (敏感度分析: 預期報酬 ±2%)</div>
+            <div class="card-body"><div class="grid-4">
+                <div class="form-group"><label>現齡</label><div class="input-wrapper"><input type="number" id="ret_age_now" value="35" class="app-input"></div></div>
+                <div class="form-group"><label>退休齡</label><div class="input-wrapper"><input type="number" id="ret_age_retire" value="60" class="app-input"></div></div>
+                <div class="form-group"><label>餘命</label><div class="input-wrapper"><input type="number" id="ret_life_years" value="20" class="app-input"></div></div>
+                <div class="form-group"><label>現開支</label><div class="input-wrapper"><input type="text" id="ret_expense_now" value="30,000" class="app-input num-input" oninput="formatMe(this)"></div></div>
+                <div class="form-group"><label>通膨%</label><div class="input-wrapper"><input type="number" id="ret_inflation" value="2" step="0.1" class="app-input"></div></div>
+                <div class="form-group"><label>基準報酬%</label><div class="input-wrapper"><input type="number" id="ret_return" value="5" step="0.1" class="app-input"></div></div>
+                <div class="form-group"><label>已備</label><div class="input-wrap"><input type="text" id="ret_current_sav" value="500,000" class="app-input num-input" oninput="formatMe(this)"></div></div>
+                <div class="form-group" style="display:flex;align-items:end;"><button class="btn-action" style="width:100%; background:var(--color-retire);" onclick="calcPension()">開始試算</button></div>
+            </div></div>
+        </div>
+        
+        <div id="retire-result" style="display:none;">
+            <div class="grid-4" style="margin-bottom:20px;">
+                <div class="total-card" style="border-top-color:var(--color-retire); padding:10px;"><span class="tc-label">退休首月開支</span><div class="tc-val" id="ret_res_fv_exp" style="font-size:1.4rem;">$0</div></div>
+                <div class="total-card" style="border-top-color:var(--color-retire); padding:10px;"><span class="tc-label">應備總額</span><div class="tc-val" id="ret_res_total_need" style="font-size:1.4rem; color:#d63384;">$0</div></div>
+                <div class="total-card" style="border-top-color:#1cc88a; padding:10px;"><span class="tc-label">每年應存</span><div class="tc-val" id="ret_res_year_save" style="font-size:1.4rem; color:#1cc88a;">$0</div></div>
+                <div class="total-card" style="border-top-color:#1cc88a; padding:10px;"><span class="tc-label">每月應存</span><div class="tc-val" id="ret_res_month_save" style="font-size:1.4rem; color:#1cc88a;">$0</div></div>
+            </div>
+            <div class="chart-container"><canvas id="retireChart"></canvas></div>
+            <div class="retire-split-layout">
+                <div class="retire-table-container rt-acc"><h4 style="text-align:center; color:#1cc88a; margin:0 0 10px 0;">📈 準備期 (累積)</h4><table id="table_acc"><thead><tr><th>年齡</th><th>存入</th><th>餘額</th></tr></thead><tbody></tbody></table></div>
+                <div class="retire-table-container rt-dec"><h4 style="text-align:center; color:#e74a3b; margin:0 0 10px 0;">📉 退休期 (提領)</h4><table id="table_dec"><thead><tr><th>年齡</th><th>支出</th><th>餘額</th></tr></thead><tbody></tbody></table></div>
+            </div>
+        </div>
+        <div class="nav-btn-container"><button class="btn-next" onclick="switchTab('tab-consult')">下一步：諮詢筆記 &gt;</button></div>
+    </div>
+
+    <div id="tab-consult" class="section">
+        <div class="print-header">陸、財務諮詢與建議</div>
+        <div class="grid-2">
+            <div class="card"><div class="card-header border-consult">💰 資產管理建議</div><div class="card-body"><textarea id="note_asset" class="app-input" placeholder="輸入建議..."></textarea></div></div>
+            <div class="card"><div class="card-header border-consult">💸 債務管理建議</div><div class="card-body"><textarea id="note_debt" class="app-input" placeholder="輸入建議..."></textarea></div></div>
+            <div class="card"><div class="card-header border-consult">🛡️ 風險管理建議</div><div class="card-body"><textarea id="note_risk" class="app-input" placeholder="輸入建議..."></textarea></div></div>
+            <div class="card"><div class="card-header border-consult">🏰 傳承管理建議</div><div class="card-body"><textarea id="note_legacy" class="app-input" placeholder="輸入建議..."></textarea></div></div>
+        </div>
+    </div>
+
+</div>
+
+<div class="print-footer">本報告僅供財務規劃參考，不保證未來績效。實際稅務與法規請依當時政府公告為準。 © FChFP 3.2</div>
+
+<div class="sticky-footer">
+    <div>月結餘: <span id="footer-net-flow" class="sf-val">$0</span></div>
+    <div style="border-left:1px solid #d1d3e2; padding-left:30px;">淨值: <span id="footer-net-worth" class="sf-val">$0</span></div>
+</div>
+
+<script>
+    // Data
+    const incomes=[{id:'inc_main',name:'收入'},{id:'inc_bonus',name:'獎金'},{id:'inc_year_bonus',name:'年終獎金'},{id:'inc_ins_back',name:'保險還本金'},{id:'inc_fund_div',name:'基金配息'},{id:'inc_stock_div',name:'股票配息'},{id:'inc_rent',name:'房租收益'}];
+    const fixedExpenses=[{id:'exp_mortgage1',name:'房貸1'},{id:'exp_mortgage2',name:'房貸2'},{id:'exp_rent',name:'房租、管理費'},{id:'exp_parking',name:'停車位月費'},{id:'exp_tax_vehicle',name:'汽機車稅金'},{id:'exp_car_maint',name:'汽機車保養'},{id:'exp_car_loan',name:'車貸'},{id:'exp_loan',name:'信貸'},{id:'exp_student_loan',name:'學貸'},{id:'exp_union',name:'公會、勞保'},{id:'exp_health',name:'健保'},{id:'exp_medical_ins',name:'醫療險'},{id:'exp_prop_ins',name:'產險(車、房)'},{id:'exp_sav_ins',name:'儲蓄險'},{id:'exp_fund_reg',name:'定期定額基金'},{id:'exp_deposit',name:'定存'},{id:'exp_stock',name:'股票'}];
+    const variableExpenses=[{id:'var_phone',name:'電話費'},{id:'var_parents',name:'每月孝親、禮金'},{id:'var_child',name:'小孩'},{id:'var_pet',name:'寵物'},{id:'var_red_white',name:'紅包白包'},{id:'var_donate',name:'捐贈'},{id:'var_tax_income',name:'所得稅'},{id:'var_member',name:'每月會員費'},{id:'var_medical',name:'每月醫療保健費'},{id:'var_transport',name:'交通費'},{id:'var_util',name:'水電瓦斯網路'},{id:'var_food',name:'伙食費'},{id:'var_ent',name:'國內娛樂'},{id:'var_beauty',name:'治裝、保養品'},{id:'var_social',name:'交際應酬費'},{id:'var_daily',name:'日用品'},{id:'var_travel',name:'出國'}];
+    const assetsCash=[{id:'ast_cash',name:'現金'},{id:'ast_deposit',name:'定存'},{id:'ast_foreign',name:'外幣'},{id:'ast_life_val',name:'壽險當量現金'}];
+    const assetsInvest=[{id:'ast_sav_ins',name:'儲蓄險'},{id:'ast_inv_pol',name:'投資型保單'},{id:'ast_stock',name:'股票'},{id:'ast_fund',name:'基金'},{id:'ast_crypto',name:'虛擬貨幣'},{id:'ast_inv_prop1',name:'投資房產1'},{id:'ast_inv_prop2',name:'投資房產2'},{id:'ast_lend',name:'個人借出'}];
+    const assetsPersonal=[{id:'ast_home',name:'自住宅'},{id:'ast_car',name:'交通工具'},{id:'ast_coll',name:'有價收藏'}];
+    const liabCurrent=[{id:'liab_personal',name:'個人借貸'},{id:'liab_card',name:'信用卡債'},{id:'liab_pol_loan',name:'保單貸款'},{id:'liab_cash_card',name:'現金卡貸'}];
+    const liabLong=[{id:'liab_mortgage1',name:'房貸1'},{id:'liab_mortgage2',name:'房貸2'},{id:'liab_car',name:'車貸'},{id:'liab_credit',name:'信貸'},{id:'liab_student',name:'學貸'}];
+
+    // Init
+    function init(){
+        renderRows('income-inputs',incomes); renderRows('fixed-expense-inputs',fixedExpenses); renderRows('variable-expense-inputs',variableExpenses);
+        renderSimple('assets-cash-inputs',assetsCash); renderSimple('assets-invest-inputs',assetsInvest); renderSimple('assets-personal-inputs',assetsPersonal);
+        renderSimple('liab-current-inputs',liabCurrent); renderSimple('liab-long-inputs',liabLong);
+        loadData();
+        calcAll();
+        document.body.addEventListener('change', saveToLocal);
+        document.body.addEventListener('input', saveToLocal);
+        if(!document.getElementById('pf_date').value) document.getElementById('pf_date').valueAsDate=new Date();
+        updCP();
+    }
+
+    // Helper Functions
+    function renderRows(t,l){const el=document.getElementById(t);l.forEach(i=>{el.innerHTML+=`<div class="form-group"><label>${i.name}</label><div class="input-row"><div class="input-wrapper" data-unit="月"><input type="text" inputmode="numeric" class="app-input num-input" id="${i.id}_m" oninput="formatAndSync('${i.id}','m')" placeholder="0"></div><div class="input-wrapper" data-unit="年"><input type="text" inputmode="numeric" class="app-input num-input" id="${i.id}_y" oninput="formatAndSync('${i.id}','y')" placeholder="0"></div></div></div>`;});}
+    function renderSimple(t,l){const el=document.getElementById(t);l.forEach(i=>{el.innerHTML+=`<div class="form-group"><label>${i.name}</label><div class="input-row"><div class="input-wrapper"><input type="text" inputmode="numeric" class="app-input num-input" id="${i.id}" oninput="formatAndCalc(this)" placeholder="總金額"></div></div></div>`;});}
+    function formatNumber(n){return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");}
+    function cleanNum(s){if(!s)return 0;return parseFloat(s.toString().replace(/,/g,''))||0;}
+    window.formatMe=function(el){let r=cleanNum(el.value);el.value=r===0&&el.value===''?'':formatNumber(r);};
+    window.formatAndCalc=function(el){formatMe(el); calcAll();};
+    window.formatAndSync=function(id,src){const m=document.getElementById(id+'_m'),y=document.getElementById(id+'_y');let r=cleanNum(src==='m'?m.value:y.value),o=0;if(src==='m'){o=Math.round(r*12);m.value=formatNumber(r);y.value=formatNumber(o);}else{o=Math.round(r/12);y.value=formatNumber(r);m.value=formatNumber(o);}calcAll();};
+    function sum(l,s){return l.reduce((a,b)=>a+cleanNum(document.getElementById(b.id+s).value),0);}
+    function sumS(l){return l.reduce((a,b)=>a+cleanNum(document.getElementById(b.id).value),0);}
+    function val(id){return cleanNum(document.getElementById(id).value);}
+    function set(id,v){document.getElementById(id).innerText='$'+formatNumber(Math.round(v));}
+
+    // Charts & Calc
+    let cashFlowChart, assetChart, retireChart;
+    window.calcAll=function(){
+        let incM=sum(incomes,'_m'), fixM=sum(fixedExpenses,'_m'), varM=sum(variableExpenses,'_m'); let expM=fixM+varM, netM=incM-expM;
+        let astC=sumS(assetsCash), astI=sumS(assetsInvest), astP=sumS(assetsPersonal); let totAst=astC+astI+astP;
+        let liabC=sumS(liabCurrent), liabL=sumS(liabLong); let totLiab=liabC+liabL; let netW=totAst-totLiab;
+
+        set('summary-income-m',incM); set('summary-fixed-m',fixM); set('summary-variable-m',varM);
+        set('summary-asset-cash',astC); set('summary-asset-personal',astP); set('summary-asset-invest',astI);
+        set('summary-liab-current',liabC); set('summary-liab-long',liabL);
+        set('header-total-assets',totAst); set('header-total-liabilities',totLiab); set('summary-net-worth',netW);
+        const fNet=document.getElementById('footer-net-flow'); fNet.innerText='$'+formatNumber(netM); fNet.style.color=netM>=0?'#4e73df':'#e74a3b';
+        document.getElementById('footer-net-worth').innerText='$'+formatNumber(netW);
+        
+        // Update Charts
+        if(cashFlowChart) cashFlowChart.destroy();
+        const ctx1 = document.getElementById('cashFlowChart').getContext('2d');
+        cashFlowChart = new Chart(ctx1, {type: 'doughnut', data: {labels: ['固定支出', '非固定支出', '結餘'], datasets: [{data: [fixM, varM, (netM>0?netM:0)], backgroundColor: ['#f4a100', '#e81500', '#00ac69']}]}, options: {maintainAspectRatio:false}});
+        
+        if(assetChart) assetChart.destroy();
+        const ctx2 = document.getElementById('assetChart').getContext('2d');
+        assetChart = new Chart(ctx2, {type: 'pie', data: {labels: ['現金', '自用', '投資'], datasets: [{data: [astC, astP, astI], backgroundColor: ['#0061f2', '#36b9cc', '#00ac69']}]}, options: {maintainAspectRatio:false}});
+
+        let debtPayM=val('exp_mortgage1_m')+val('exp_mortgage2_m')+val('exp_car_loan_m')+val('exp_loan_m')+val('exp_student_loan_m');
+        let mortLiab=val('liab_mortgage1')+val('liab_mortgage2');
+        let nonMortDebtM=debtPayM-(val('exp_mortgage1_m')+val('exp_mortgage2_m'));
+        let saveOut=val('exp_sav_ins_m')+val('exp_fund_reg_m')+val('exp_deposit_m')+val('exp_stock_m');
+        let liqInv=astI-(val('ast_inv_prop1')+val('ast_inv_prop2'));
+        renderDash({incM,expM,astC,netW,totAst,totLiab,debtPayM,mortLiab,nonMortDebtM,saveOut,liqInv,netM});
+    }
+
+    function renderDash(d){
+        const box=document.getElementById('dashboard');box.innerHTML='';let f=[];
+        let v1=d.expM>0?(d.astC/d.expM).toFixed(1):0;addC(box,'☔ 緊急預備金',v1+' 個月','失去收入時,現金可支付月開支','公式: 現金/月開支','建議: 3~6個月',v1<3,f);
+        let v2=d.expM>0?(d.liqInv/d.expM).toFixed(1):0;addC(box,'💎 備用資產',v2+' 個月','耗盡現金後能支付月開銷','公式: (投資-房-退)/月開支','建議: 越高越好',v2<1,f);
+        let ts=d.saveOut+d.netM; let v3=d.incM>0?((ts/d.incM)*100).toFixed(1):0;addC(box,'🐖 儲蓄比',v3+' %','儲蓄佔收入比','公式: (儲蓄+餘)/總收入','建議: 最低10%',v3<10,f);
+        let v4=d.netW>0?((d.liqInv/d.netW)*100).toFixed(1):0;addC(box,'📈 投資淨值比',v4+' %','投資佔比','公式: (投資-房)/淨值','建議: 50%以上',v4<50,f);
+        let v5=d.incM>0?((d.debtPayM/d.incM)*100).toFixed(1):0;addC(box,'💸 償債比',v5+' %','月還款/收入','公式: 月還款/月收入','建議: 50%以下',v5>50,f);
+        let v6=d.totAst>0?((d.mortLiab/d.totAst)*100).toFixed(1):0;addC(box,'🏠 房貸比',v6+' %','房貸佔總資產比','公式: 房貸/總資產','建議: 35%以下',v6>35,f);
+        let v7=d.incM>0?((d.nonMortDebtM/d.incM)*100).toFixed(1):0;addC(box,'💳 償還非房貸',v7+' %','非房貸還款/收入','公式: (總還-房貸)/月收','建議: 15%以下',v7>15,f);
+        let v8=d.totAst>0?((d.totLiab/d.totAst)*100).toFixed(1):0;addC(box,'📉 負債比',v8+' %','總負債佔總資產','公式: 總負債/總資產','建議: 50%以下',v8>50,f);
+        let v9=d.netW>0?((d.astC/d.netW)*100).toFixed(1):0;addC(box,'💧 流動資產比',v9+' %','現金/淨值','公式: 現金/淨值','建議: 最低15%',v9<15,f);
+        const wb=document.getElementById('analysis-warning');
+        if(f.length>0){wb.style.display='block';document.getElementById('red-flag-list').innerHTML=f.map(x=>`<div style="color:#e74a3b;font-weight:bold;">❌ ${x}</div>`).join('');}else{wb.style.display='none';}
+    }
+    function addC(p,t,v,d,f,r,bad,l){const c=document.createElement('div');c.className='report-card';if(bad)l.push(t);const clr=bad?'text-red':'text-green';c.innerHTML=`<div class="rc-header">${t}</div><div class="rc-body"><span class="rc-def">${d}</span><div class="rc-val ${clr}">${v}</div><div class="rc-formula">${f}</div></div><div class="rc-footer">${r}</div>`;p.appendChild(c);}
+
+    window.calcPension=function(){
+        const now=val('ret_age_now'), ret=val('ret_age_retire'), life=val('ret_life_years');
+        const exp=val('ret_expense_now'), inf=val('ret_inflation')/100, r=val('ret_return')/100, sav=val('ret_current_sav');
+        const yrs=ret-now; const fvExp=exp*Math.pow(1+inf,yrs); set('ret_res_fv_exp',fvExp);
+        let need=0, yrExp=fvExp*12, expArr=[]; for(let i=0;i<life;i++){expArr.push(yrExp);yrExp*=(1+inf);}
+        for(let i=life-1;i>=0;i--){need=(need/(1+r))+expArr[i];} set('ret_res_total_need',need);
+        const hasFV=sav*Math.pow(1+r,yrs), gap=need-hasFV; let yrSav=0; if(gap>0){const fac=((Math.pow(1+r,yrs)-1)/r)*(1+r); yrSav=gap/fac;}
+        set('ret_res_year_save',yrSav); set('ret_res_month_save',yrSav/12);
+        
+        // Sensitivity Analysis (Conservative: r-2%, Optimistic: r+2%)
+        let rC=Math.max(0,r-0.02), rO=r+0.02;
+        let bal=sav, balC=sav, balO=sav, age=now, l=[], d=[], dC=[], dO=[];
+        const tbAcc=document.querySelector('#table_acc tbody'); tbAcc.innerHTML='';
+        const tbDec=document.querySelector('#table_dec tbody'); tbDec.innerHTML='';
+        
+        for(let i=0;i<yrs;i++){
+            let base=bal+yrSav; let end=base+(base*r); l.push(age); d.push(Math.round(bal));
+            tbAcc.innerHTML+=`<tr><td>${age}</td><td>${formatNumber(Math.round(yrSav))}</td><td>${formatNumber(Math.round(end))}</td></tr>`;
+            bal=end;
+            let baseC=balC+yrSav; let endC=baseC+(baseC*rC); dC.push(Math.round(balC)); balC=endC;
+            let baseO=balO+yrSav; let endO=baseO+(baseO*rO); dO.push(Math.round(balO)); balO=endO;
+            age++;
+        }
+        let dExp=fvExp*12;
+        for(let i=0;i<life;i++){
+            let base=bal-dExp; if(base<0)base=0; let end=base+(base*r); l.push(age); d.push(Math.round(bal));
+            tbDec.innerHTML+=`<tr style="background:#fff5f5"><td>${age}</td><td>${formatNumber(Math.round(dExp))}</td><td>${formatNumber(Math.round(end))}</td></tr>`;
+            bal=end;
+            let baseC=balC-dExp; if(baseC<0)baseC=0; let endC=baseC+(baseC*rC); dC.push(Math.round(balC)); balC=endC;
+            let baseO=balO-dExp; if(baseO<0)baseO=0; let endO=baseO+(baseO*rO); dO.push(Math.round(balO)); balO=endO;
+            dExp*=(1+inf); age++;
+        }
+        document.getElementById('retire-result').style.display='block';
+        const ctx=document.getElementById('retireChart').getContext('2d');
+        if(retireChart) retireChart.destroy();
+        retireChart = new Chart(ctx,{type:'line',data:{labels:l,datasets:[
+            {label:'基準情境',data:d,borderColor:'#4e73df',fill:false},
+            {label:'保守情境',data:dC,borderColor:'#e74a3b',borderDash:[5,5],fill:false},
+            {label:'樂觀情境',data:dO,borderColor:'#1cc88a',borderDash:[5,5],fill:false}
+        ]},options:{maintainAspectRatio:false}});
+    }
+
+    // Save/Load
+    function saveToLocal(){
+        const data = {}; document.querySelectorAll('input, textarea, select').forEach(el=>{if(el.id) data[el.id]=el.value;});
+        localStorage.setItem('fchfp_data', JSON.stringify(data)); updCP();
+    }
+    function loadData(){const d = JSON.parse(localStorage.getItem('fchfp_data')); if(d){for(let k in d){const el=document.getElementById(k);if(el)el.value=d[k];}}}
+    function exportJson(){
+        const data = localStorage.getItem('fchfp_data');
+        const b = new Blob([data], {type: "application/json"});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `FChFP_${document.getElementById('pf_name').value}.json`; a.click();
+    }
+    function importData(input){
+        const file = input.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = JSON.parse(e.target.result);
+            for(let k in data){const el=document.getElementById(k);if(el)el.value=data[k];}
+            saveToLocal(); calcAll(); alert('匯入成功');
+        }; reader.readAsText(file);
+    }
+    function updCP(){
+        document.getElementById('cp-name').innerText=document.getElementById('pf_name').value;
+        document.getElementById('cp-advisor').innerText=document.getElementById('pf_advisor').value;
+        document.getElementById('cp-date').innerText=document.getElementById('pf_date').value;
+    }
+    function clearAllData(){if(!confirm('清除?'))return;localStorage.removeItem('fchfp_data');location.reload();}
+    
+    window.switchTab=function(id){document.querySelectorAll('.section').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(e=>{e.classList.remove('active');if(e.getAttribute('onclick').includes(id))e.classList.add('active');});document.getElementById(id).classList.add('active');}
+    init();
+</script>
+</body>
+</html>
