@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>家族傳承全方位規劃系統 (CFWIP 黃威龍)</title>
+    <style>
+        :root {
+            /* 沉穩專業配色 */
+            --primary-color: #2C3E50; /* 深岩灰藍 */
+            --secondary-color: #C0A062; /* 雅緻金 */
+            --bg-color: #F4F6F8;
+            --card-bg: #FFFFFF;
+            --text-color: #333333;
+            --border-color: #DCE0E4;
+            --line-color: #666666;
+
+            /* 按鈕配色 */
+            --btn-print-bg: #34495E;
+            --btn-save-bg: #27AE60;
+            --btn-clear-bg: #C0392B;
+            --btn-nav-bg: #2980b9; /* 導覽按鈕藍 */
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 950px; 
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            border-top: 6px solid var(--primary-color);
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 50px;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+        }
+
+        header h1 { margin: 0; font-size: 1.5rem; letter-spacing: 1px; line-height: 1.4; }
+        header p { margin: 8px 0 0; font-size: 0.9rem; color: var(--secondary-color); opacity: 0.9; }
+
+        /* 主分頁 Tabs */
+        .tabs {
+            display: flex;
+            cursor: pointer;
+            border-bottom: 1px solid #e0e0e0;
+            background: #fdfdfd;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 10px;
+            text-align: center;
+            font-weight: bold;
+            color: #7f8c8d;
+            transition: 0.3s;
+            border-right: 1px solid #eee;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .tab:last-child { border-right: none; }
+        .tab.active { background: var(--card-bg); color: var(--primary-color); border-bottom: 4px solid var(--secondary-color); }
+
+        .content { padding: 30px; display: none; flex-grow: 1; }
+        .content.active { display: block; }
+
+        /* 問卷內部導覽列 (Sub-navigation) */
+        .q-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .q-step-indicator {
+            flex: 1;
+            text-align: center;
+            font-weight: bold;
+            color: #bbb;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        
+        .q-step-indicator.active {
+            color: var(--primary-color);
+            background-color: #f0f4f8;
+            border-bottom: 3px solid var(--secondary-color);
+        }
+
+        .q-page { display: none; animation: fadeIn 0.4s ease; }
+        .q-page.active { display: block; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 問卷底部翻頁按鈕 */
+        .q-footer-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px dashed #eee;
+        }
+        
+        .btn-nav {
+            padding: 10px 20px;
+            background-color: var(--btn-nav-bg);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-nav:disabled { background-color: #ccc; cursor: not-allowed; }
+        .btn-nav:hover:not(:disabled) { opacity: 0.9; }
+
+        /* 一般樣式 */
+        .section-title {
+            color: var(--primary-color);
+            border-left: 4px solid var(--secondary-color);
+            padding-left: 15px;
+            margin-top: 25px; /* 調整間距 */
+            margin-bottom: 20px;
+            font-size: 1.15rem;
+            font-weight: 700;
+            background-color: #f9f9f9;
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+        .section-title:first-child { margin-top: 0; }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; font-size: 0.95rem; }
+        .input-wrapper { position: relative; }
+        
+        input[type="text"], input[type="number"], textarea {
+            width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 1rem; background: #fff; transition: border 0.3s; appearance: none;
+        }
+        .calc-input, .asset-amount { text-align: right; font-family: Consolas, monospace; }
+        input:focus { border-color: var(--secondary-color); outline: none; box-shadow: 0 0 0 2px rgba(192, 160, 98, 0.2); }
+        .input-wrapper::after { content: "元"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #999; font-size: 0.9rem; pointer-events: none;}
+        input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin-right: 8px; cursor: pointer; accent-color: var(--primary-color); vertical-align: middle; }
+
+        /* 網格系統 */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .q-row { display: flex; gap: 15px; margin-bottom: 10px; }
+        .q-col { flex: 1; }
+
+        /* RWD Breakpoints */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .content { padding: 20px 15px; }
+            .grid-2 { grid-template-columns: 1fr; gap: 15px; }
+            .q-row { flex-direction: column; gap: 15px; }
+            .tab { font-size: 0.9rem; padding: 12px 5px; }
+            .global-actions { flex-direction: column; padding: 20px; }
+            .btn-action { width: 100%; justify-content: center; }
+            /* 問卷導覽在手機上堆疊或簡化 */
+            .q-nav { font-size: 0.8rem; overflow-x: auto; white-space: nowrap; }
+        }
+
+        /* 樹狀圖 (Fixed & Scrollable) */
+        .tree-scroll-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; background-color: #fafafa; border: 1px dashed #ccc; border-radius: 8px; padding: 20px 0; position: relative; }
+        .mobile-hint { display: none; text-align: center; font-size: 0.8rem; color: #888; margin-bottom: 5px; background: #eee; padding: 4px; border-radius: 4px; }
+        @media (max-width: 768px) { .mobile-hint { display: block; } }
+        
+        .tree-container { display: flex; flex-direction: column; align-items: center; min-width: 800px; padding: 0 20px; }
+        .tree-level { display: flex; justify-content: center; position: relative; z-index: 2; flex-wrap: nowrap; }
+        .tree-node { background: white; border: 1px solid #ccc; border-top: 4px solid var(--primary-color); padding: 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-align: left; width: 260px; margin: 0 20px; position: relative; }
+        .node-title { font-weight: bold; color: var(--primary-color); text-align: center; display: block; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        
+        /* 樹狀圖連線 */
+        .connector-bridge-row { display: flex; justify-content: center; height: 30px; width: 100%; }
+        .connector-bridge-left, .connector-bridge-right { width: 150px; height: 100%; border-top: 2px solid var(--line-color); }
+        .connector-bridge-left { border-right: 2px solid var(--line-color); }
+        .connector-stem { width: 2px; height: 30px; background-color: var(--line-color); margin: 0 auto; }
+        .branch-bar { height: 20px; border-top: 2px solid var(--line-color); width: 600px; display: flex; justify-content: space-between; margin: 0 auto; position: relative; }
+        .branch-drop { width: 2px; height: 20px; background-color: var(--line-color); position: relative; }
+        .branch-drop.center { position: absolute; left: 50%; transform: translateX(-50%); top: -30px; height: 50px; background-color: var(--line-color); }
+
+        /* 資產表格 */
+        .table-scroll-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 20px; border: 1px solid #eee; border-radius: 6px;}
+        table.asset-table { width: 100%; min-width: 600px; border-collapse: collapse; }
+        table.asset-table th, table.asset-table td { border: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: middle; white-space: nowrap; }
+        table.asset-table th { background-color: #eaecee; color: var(--primary-color); font-weight: bold; }
+        
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 5px; }
+        .checkbox-item { display: flex; align-items: center; cursor: pointer; font-size: 0.95rem; }
+
+        /* 扣除額群組 */
+        .deduction-group { border: 1px solid #eee; background: #fafafa; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
+        .deduction-title { font-weight: bold; color: var(--secondary-color); margin-bottom: 10px; display: block; font-size: 1rem; }
+
+        /* 顧問欄位 */
+        .advisor-section { background: #fcfcfc; border: 1px solid #e0e0e0; border-left: 5px solid var(--secondary-color); padding: 20px; margin-top: 40px; border-radius: 4px; }
+        .advisor-title { font-size: 1.1rem; font-weight: bold; color: var(--primary-color); margin-bottom: 15px; }
+
+        /* 按鈕與功能區 */
+        .btn-calc { width: 100%; padding: 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 6px; font-size: 1.1rem; cursor: pointer; margin-top: 20px; font-weight: bold; }
+        .global-actions { padding: 20px; background-color: #f1f3f5; border-top: 1px solid #e0e0e0; display: flex; gap: 15px; justify-content: flex-end; flex-wrap: wrap; }
+        .btn-action { padding: 12px 20px; border: none; border-radius: 4px; font-size: 1rem; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; gap: 8px; justify-content: center; }
+        .btn-print { background-color: var(--btn-print-bg); }
+        .btn-save { background-color: var(--btn-save-bg); }
+        .btn-clear { background-color: var(--btn-clear-bg); }
+
+        /* 結果顯示 */
+        .result-box { background: #fff; border: 1px solid #eee; border-left: 5px solid var(--secondary-color); padding: 20px; border-radius: 4px; margin-top: 30px; display: none; }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e0e0e0; flex-wrap: wrap; }
+        .result-value { font-weight: bold; color: var(--primary-color); font-family: Consolas, monospace; }
+        .final-tax { font-size: 1.5rem; color: #c0392b; }
+        .note { font-size: 0.85rem; color: #777; margin-top: 25px; background: #f1f3f5; padding: 15px; border-radius: 4px; line-height: 1.5; }
+
+        .designer-footer { background-color: var(--primary-color); color: white; text-align: center; padding: 15px; margin-top: auto; font-size: 0.9rem; }
+        .designer-name { color: var(--secondary-color); font-weight: bold; margin-left: 5px; }
+
+        /* 列印樣式 - 強制展開所有問卷頁 */
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; border: none; max-width: 100%; margin: 0; }
+            .tabs, .btn-calc, .global-actions, .designer-footer, .note, .mobile-hint, .q-nav, .q-footer-nav { display: none !important; }
+            .content { display: none; padding: 0; }
+            #questionnaire { display: block !important; }
+            
+            /* 關鍵：列印時顯示所有分頁 */
+            .q-page { display: block !important; margin-bottom: 30px; border-bottom: 2px dashed #000; padding-bottom: 20px; }
+            
+            header { background: white; color: black; border-bottom: 2px solid #000; padding: 10px 0; }
+            header h1 { color: #000; font-size: 18pt; }
+            .section-title { border-left: none; border-bottom: 2px solid #000; padding-left: 0; color: #000; background: none; }
+            input, textarea { border: none; border-bottom: 1px solid #ccc; border-radius: 0; padding-left: 0; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .tree-scroll-wrapper, .table-scroll-wrapper { border: none; overflow: visible; }
+            .tree-container { min-width: 0; padding: 0; border: none; }
+            table.asset-table { min-width: 0; width: 100%; }
+            .connector-bridge-left, .connector-bridge-right, .connector-stem, .branch-bar, .branch-drop { background-color: #000 !important; border-color: #000 !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>家族傳承全方位規劃系統</h1>
+        <p>Professional Legacy Planning System (2025)</p>
+    </header>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('gift')">贈與稅試算</div>
+        <div class="tab" onclick="switchTab('estate')">遺產稅試算</div>
+        <div class="tab" onclick="switchTab('questionnaire')">家族傳承問卷</div>
+    </div>
+
+    <div id="gift" class="content active">
+        <h3 class="section-title">贈與資料輸入 (2025基準)</h3>
+        <div class="form-group">
+            <label>本年度贈與總額</label>
+            <div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="giftTotal" placeholder="輸入總金額" onkeyup="formatInput(this)"></div>
+        </div>
+        <div class="form-group">
+            <label>每人每年免稅額</label>
+            <div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="giftExemption" value="2,440,000" onkeyup="formatInput(this)"></div>
+        </div>
+        <div class="form-group">
+            <label>扣除額 (土地增值稅/契稅等)</label>
+            <div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="giftDeduction" value="0" onkeyup="formatInput(this)"></div>
+        </div>
+        <button class="btn-calc" onclick="calculateGiftTax()">計算贈與稅</button>
+        <div id="giftResult" class="result-box">
+            <div class="result-row"><span class="result-label">贈與淨額</span><span class="result-value" id="giftNetResult">0 元</span></div>
+            <div class="result-row"><span class="result-label">適用稅率</span><span class="result-value" id="giftRateResult">0%</span></div>
+            <div class="result-row"><span class="result-label">累進差額</span><span class="result-value" id="giftDiffResult">0 元</span></div>
+            <div class="result-row" style="margin-top:10px;"><span class="result-label" style="font-weight:bold; font-size:1.2rem; align-self:center;">應納稅額</span><span class="result-value final-tax" id="giftTaxResult">0 元</span></div>
+        </div>
+        <div class="note">※ 依據 2025 (民國114年) 最新級距計算。</div>
+    </div>
+
+    <div id="estate" class="content">
+        <h3 class="section-title">資產總覽 (2025基準)</h3>
+        <div class="form-group">
+            <label>遺產總額 (動產 + 不動產評定現值)</label>
+            <div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="estateTotal" placeholder="輸入總資產" onkeyup="formatInput(this)"></div>
+        </div>
+        <div class="form-group">
+            <label>免稅額 (一般 1,333 萬)</label>
+            <div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="estateExemption" value="13,330,000" onkeyup="formatInput(this)"></div>
+        </div>
+
+        <h3 class="section-title">扣除額總計明細</h3>
+        <div class="deduction-group">
+            <span class="deduction-title">👤 親屬/身份扣除額</span>
+            <div class="grid-2">
+                <div class="form-group"><label>配偶 (553 萬)</label><div style="padding: 12px; background: white; border: 1px solid #ddd; border-radius: 4px;"><label class="checkbox-item" style="margin:0;"><input type="checkbox" id="deductSpouseCheck" checked> 符合扣除條件</label></div></div>
+                <div class="form-group"><label>直系卑親屬 (每人 56 萬)</label><div class="input-wrapper"><input type="number" inputmode="numeric" class="calc-input" id="deductChildCount" value="2" placeholder="人數" style="text-align:center;"></div></div>
+                <div class="form-group"><label>父母 (每人 138 萬)</label><div class="input-wrapper"><input type="number" inputmode="numeric" class="calc-input" id="deductParentCount" value="0" placeholder="人數" style="text-align:center;"></div></div>
+                <div class="form-group"><label>重度身心障礙 (每人 693 萬)</label><div class="input-wrapper"><input type="number" inputmode="numeric" class="calc-input" id="deductDisabledCount" value="0" placeholder="人數" style="text-align:center;"></div></div>
+            </div>
+        </div>
+        <div class="deduction-group">
+            <span class="deduction-title">💰 財產/債務/費用扣除額</span>
+            <div class="grid-2">
+                 <div class="form-group"><label>喪葬費 (預設 138 萬)</label><div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="deductFuneral" value="1,380,000" onkeyup="formatInput(this)"></div></div>
+                <div class="form-group"><label>農地及其他地上作物</label><div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="deductAgri" value="0" onkeyup="formatInput(this)"></div></div>
+                <div class="form-group"><label>應納未納稅捐</label><div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="deductUnpaidTax" value="0" onkeyup="formatInput(this)"></div></div>
+                <div class="form-group"><label>未償債務</label><div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="deductDebt" value="0" onkeyup="formatInput(this)"></div></div>
+                <div class="form-group"><label>公共設施保留地</label><div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="deductPublicLand" value="0" onkeyup="formatInput(this)"></div></div>
+                <div class="form-group"><label>民法第1030-1條</label><div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="deduct1030" value="0" onkeyup="formatInput(this)"></div></div>
+                <div class="form-group"><label>死亡前6-9年已納遺產稅</label><div class="input-wrapper"><input type="text" inputmode="numeric" class="calc-input" id="deductPriorTax" value="0" onkeyup="formatInput(this)"></div></div>
+            </div>
+        </div>
+        <button class="btn-calc" onclick="calculateEstateTax()">計算遺產稅</button>
+        <div id="estateResult" class="result-box">
+             <div class="result-row"><span class="result-label">遺產淨額</span><span class="result-value" id="estateNetResult">0 元</span></div>
+            <div class="result-row"><span class="result-label">適用稅率</span><span class="result-value" id="estateRateResult">0%</span></div>
+            <div class="result-row"><span class="result-label">累進差額</span><span class="result-value" id="estateDiffResult">0 元</span></div>
+            <div class="result-row" style="margin-top:10px;"><span class="result-label" style="font-weight:bold; font-size:1.2rem; align-self:center;">應納稅額</span><span class="result-value final-tax" id="estateTaxResult">0 元</span></div>
+             <div class="result-row" style="border-top:1px solid #eee; padding-top:10px; margin-top:10px;"><span class="result-label">扣除額總計</span><span class="result-value" id="totalDeductionDisplay" style="color:#666;">0 元</span></div>
+        </div>
+        <div class="note">※ 依據 2025 (民國114年) 最新級距與扣除額計算。</div>
+    </div>
+
+    <div id="questionnaire" class="content">
+        
+        <div class="q-nav">
+            <div class="q-step-indicator active" onclick="goToPage(1)" id="step-ind-1">1. 基本與家族</div>
+            <div class="q-step-indicator" onclick="goToPage(2)" id="step-ind-2">2. 資產與意向</div>
+            <div class="q-step-indicator" onclick="goToPage(3)" id="step-ind-3">3. 補充與顧問</div>
+        </div>
+
+        <div id="q-page-1" class="q-page active">
+            <h3 class="section-title">一、基本資料</h3>
+            <div class="q-row">
+                <div class="q-col"><label>1. 姓名</label><input type="text" class="q-input"></div>
+                <div class="q-col"><label>2. 職業/職稱</label><input type="text" class="q-input"></div>
+                <div class="q-col"><label>3. 出生年次</label><input type="text" class="q-input"></div>
+            </div>
+
+            <h3 class="section-title">二、家族人物關係圖 (Tree Diagram)</h3>
+            <div class="mobile-hint">← 左右滑動查看完整圖表 →</div>
+            <div class="tree-scroll-wrapper">
+                <div class="tree-container">
+                    <div class="tree-level">
+                        <div class="tree-node"><span class="node-title">父親 (第一代)</span><div style="display:flex; gap:10px; margin-bottom:10px;"><input type="text" placeholder="年齡" style="width:100%;"></div><div class="checkbox-group"><label class="checkbox-item"><input type="radio" name="f_status"> 存</label><label class="checkbox-item"><input type="radio" name="f_status"> 歿</label><label class="checkbox-item"><input type="checkbox"> 離/再</label></div></div>
+                        <div class="tree-node"><span class="node-title">母親 (第一代)</span><div style="display:flex; gap:10px; margin-bottom:10px;"><input type="text" placeholder="年齡" style="width:100%;"></div><div class="checkbox-group"><label class="checkbox-item"><input type="radio" name="m_status"> 存</label><label class="checkbox-item"><input type="radio" name="m_status"> 歿</label><label class="checkbox-item"><input type="checkbox"> 離/再</label></div></div>
+                    </div>
+                    <div class="connector-bridge-row"><div class="connector-bridge-left"></div><div class="connector-bridge-right"></div></div>
+                    <div class="tree-level" style="margin-top: 0;">
+                        <div class="tree-node" style="width: 320px; border-top-color: var(--secondary-color);"><span class="node-title" style="color:var(--secondary-color);">本人與配偶 (第二代)</span>
+                            <div class="q-row">
+                                <div style="flex:1;"><label style="font-size:0.9rem;">本人</label><div class="checkbox-group" style="margin-bottom:5px;"><label><input type="radio" name="sg">男</label><label><input type="radio" name="sg">女</label></div><input type="text" placeholder="年齡" style="margin-bottom:5px;"></div>
+                                <div style="flex:1; border-left:1px solid #eee; padding-left:10px;"><label style="font-size:0.9rem;">配偶</label><div class="checkbox-group" style="margin-bottom:5px;"><label><input type="radio" name="sp">有</label><label><input type="radio" name="sp">無</label></div><input type="text" placeholder="年齡" style="margin-bottom:5px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="connector-stem"></div>
+                    <div class="branch-bar"><div class="branch-drop"></div><div class="branch-drop center"></div><div class="branch-drop"></div></div>
+                    <div class="tree-level">
+                        <div class="tree-node" style="width: 200px;"><span class="node-title">子女 1 (第三代)</span><div style="margin-bottom:5px;"><input type="radio" name="c1g">男 <input type="radio" name="c1g">女</div><input type="text" placeholder="年齡" style="margin-bottom:5px;"><label class="checkbox-item"><input type="checkbox"> 有配偶</label><input type="text" placeholder="孫子女數"></div>
+                        <div class="tree-node" style="width: 200px;"><span class="node-title">子女 2 (第三代)</span><div style="margin-bottom:5px;"><input type="radio" name="c2g">男 <input type="radio" name="c2g">女</div><input type="text" placeholder="年齡" style="margin-bottom:5px;"><label class="checkbox-item"><input type="checkbox"> 有配偶</label><input type="text" placeholder="孫子女數"></div>
+                        <div class="tree-node" style="width: 200px;"><span class="node-title">子女 3 (第三代)</span><div style="margin-bottom:5px;"><input type="radio" name="c3g">男 <input type="radio" name="c3g">女</div><input type="text" placeholder="年齡" style="margin-bottom:5px;"><label class="checkbox-item"><input type="checkbox"> 有配偶</label><input type="text" placeholder="孫子女數"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="q-page-2" class="q-page">
+            <h3 class="section-title">三、資產結構盤點 (估值)</h3>
+            <div class="mobile-hint">← 左右滑動填寫表格 →</div>
+            <div class="table-scroll-wrapper">
+                <table class="asset-table">
+                    <thead><tr><th>資產類別</th><th style="width:10%;">擁有</th><th>大致金額</th><th>備註 (持有方式/登記人)</th></tr></thead>
+                    <tbody>
+                        <tr><td>自用住宅</td><td><input type="checkbox"></td><td><input type="text" class="q-input asset-amount" inputmode="numeric" onkeyup="formatInput(this)"></td><td><input type="text" class="q-input"></td></tr>
+                        <tr><td>投資型不動產</td><td><input type="checkbox"></td><td><input type="text" class="q-input asset-amount" inputmode="numeric" onkeyup="formatInput(this)"></td><td><input type="text" class="q-input"></td></tr>
+                        <tr><td>公司股權/事業持份</td><td><input type="checkbox"></td><td><input type="text" class="q-input asset-amount" inputmode="numeric" onkeyup="formatInput(this)"></td><td><input type="text" class="q-input" placeholder="公司名稱"></td></tr>
+                        <tr><td>金融資產(現金/股票)</td><td><input type="checkbox"></td><td><input type="text" class="q-input asset-amount" inputmode="numeric" onkeyup="formatInput(this)"></td><td><input type="text" class="q-input"></td></tr>
+                        <tr><td>保險資產(壽險/年金)</td><td><input type="checkbox"></td><td><input type="text" class="q-input asset-amount" inputmode="numeric" onkeyup="formatInput(this)"></td><td><input type="text" class="q-input" placeholder="受益人?"></td></tr>
+                        <tr><td>海外資產</td><td><input type="checkbox"></td><td><input type="text" class="q-input asset-amount" inputmode="numeric" onkeyup="formatInput(this)"></td><td><input type="text" class="q-input" placeholder="國別/稅務身分"></td></tr>
+                        <tr><td>收藏品(藝術/珠寶)</td><td><input type="checkbox"></td><td><input type="text" class="q-input asset-amount" inputmode="numeric" onkeyup="formatInput(this)"></td><td><input type="text" class="q-input"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="section-title">四、傳承意向與風險</h3>
+            <div class="form-group"><label>1. 您目前是否有規劃傳承的想法？</label><div class="checkbox-group"><label class="checkbox-item"><input type="radio" name="plan_status"> 已規劃部分</label><label class="checkbox-item"><input type="radio" name="plan_status"> 正在考慮中</label><label class="checkbox-item"><input type="radio" name="plan_status"> 尚未開始</label></div></div>
+            <div class="form-group"><label>2. 您關心的傳承目標為？(可複選)</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox"> 財產分配公平性</label><label class="checkbox-item"><input type="checkbox"> 家族企業永續經營</label><label class="checkbox-item"><input type="checkbox"> 子女教育/照護保障</label><label class="checkbox-item"><input type="checkbox"> 傳承家族精神價值觀</label><label class="checkbox-item"><input type="checkbox"> 減少遺產稅或節稅問題</label><label class="checkbox-item"><input type="checkbox"> 不知道從哪裡開始</label></div></div>
+            <div class="form-group"><label>3. 風險與擔憂 (請選前三項)</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox"> 家產分配不公平引發糾紛</label><label class="checkbox-item"><input type="checkbox"> 子女能力不足、無法接班</label><label class="checkbox-item"><input type="checkbox"> 子女婚姻導致資產外流</label><label class="checkbox-item"><input type="checkbox"> 二代之間不合</label><label class="checkbox-item"><input type="checkbox"> 稅務成本過高</label><label class="checkbox-item"><input type="checkbox"> 配偶或長輩未納入安排</label></div></div>
+        </div>
+
+        <div id="q-page-3" class="q-page">
+            <h3 class="section-title">五、補充說明事項</h3>
+            <textarea placeholder="請填寫其他補充事項..."></textarea>
+            
+            <div class="advisor-section">
+                <div class="advisor-title">📝 顧問資料 (Consultant Profile)</div>
+                <div class="grid-2">
+                    <div><label>主要顧問 (Primary Advisor)</label><input type="text" placeholder="姓名" style="margin-bottom:10px;"><input type="text" placeholder="聯絡電話 / ID"></div>
+                    <div><label>協同顧問 (Co-Advisor)</label><input type="text" placeholder="姓名" style="margin-bottom:10px;"><input type="text" placeholder="分工項目 / 備註"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="q-footer-nav">
+            <button class="btn-nav" id="btn-prev" onclick="changePage(-1)" disabled>← 上一頁</button>
+            <button class="btn-nav" id="btn-next" onclick="changePage(1)">下一頁 →</button>
+        </div>
+    </div>
+
+    <div class="global-actions">
+        <button class="btn-action btn-print" onclick="window.print()">🖨️ 列印問卷</button>
+        <button class="btn-action btn-save" onclick="saveAsHTML()">💾 另存檔案</button>
+        <button class="btn-action btn-clear" onclick="clearAllData()">🗑️ 刪除上述資料</button>
+    </div>
+
+    <div class="designer-footer">設計者：CFWIP 國際家族傳承規劃師 <span class="designer-name">黃威龍</span></div>
+</div>
+
+<script>
+    function formatInput(input) {
+        let val = input.value.replace(/[^0-9]/g, '');
+        if (val === "") { input.value = ""; return; }
+        input.value = parseInt(val).toLocaleString('en-US');
+    }
+
+    function getRawValue(id) {
+        let el = document.getElementById(id);
+        if(!el) return 0;
+        let val = el.value.replace(/,/g, '');
+        return parseFloat(val) || 0;
+    }
+
+    function formatMoney(amount) {
+        return amount.toLocaleString('zh-TW') + " 元";
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        const tabs = document.querySelectorAll('.tab');
+        if(tabName === 'gift') tabs[0].classList.add('active');
+        else if(tabName === 'estate') tabs[1].classList.add('active');
+        else tabs[2].classList.add('active');
+    }
+
+    /* 問卷分頁邏輯 */
+    let currentQPage = 1;
+    const totalQPages = 3;
+
+    function showQPage(page) {
+        // 隱藏所有頁面
+        for(let i=1; i<=totalQPages; i++) {
+            document.getElementById('q-page-'+i).classList.remove('active');
+            document.getElementById('step-ind-'+i).classList.remove('active');
+        }
+        // 顯示目標頁面
+        document.getElementById('q-page-'+page).classList.add('active');
+        document.getElementById('step-ind-'+page).classList.add('active');
+        
+        currentQPage = page;
+        updateNavButtons();
+    }
+
+    function changePage(direction) {
+        let newPage = currentQPage + direction;
+        if(newPage >= 1 && newPage <= totalQPages) {
+            showQPage(newPage);
+            // 捲動到問卷頂部
+            document.getElementById('questionnaire').scrollIntoView({behavior: 'smooth'});
+        }
+    }
+
+    function goToPage(page) {
+        showQPage(page);
+    }
+
+    function updateNavButtons() {
+        document.getElementById('btn-prev').disabled = (currentQPage === 1);
+        document.getElementById('btn-next').disabled = (currentQPage === totalQPages);
+        if(currentQPage === totalQPages) {
+            document.getElementById('btn-next').style.opacity = "0.5";
+            document.getElementById('btn-next').innerText = "填寫完成";
+        } else {
+            document.getElementById('btn-next').style.opacity = "1";
+            document.getElementById('btn-next').innerText = "下一頁 →";
+        }
+    }
+
+    // 2025 贈與稅計算
+    function calculateGiftTax() {
+        const total = getRawValue('giftTotal');
+        const exemption = getRawValue('giftExemption');
+        const deduction = getRawValue('giftDeduction');
+        let net = total - exemption - deduction;
+        if (net < 0) net = 0;
+        let tax = 0, rate = 0, diff = 0;
+        if (net <= 28110000) { rate = 10; diff = 0; tax = net * 0.1; } 
+        else if (net <= 56210000) { rate = 15; diff = 1405500; tax = net * 0.15 - diff; } 
+        else { rate = 20; diff = 4216000; tax = net * 0.2 - diff; }
+        document.getElementById('giftNetResult').innerText = formatMoney(net);
+        document.getElementById('giftRateResult').innerText = rate + "%";
+        document.getElementById('giftDiffResult').innerText = formatMoney(diff);
+        document.getElementById('giftTaxResult').innerText = formatMoney(Math.round(tax));
+        document.getElementById('giftResult').style.display = 'block';
+    }
+
+    // 2025 遺產稅計算 (詳細扣除額)
+    function calculateEstateTax() {
+        const total = getRawValue('estateTotal');
+        const exemption = getRawValue('estateExemption');
+        let valSpouse = document.getElementById('deductSpouseCheck').checked ? 5530000 : 0;
+        const valChild = getRawValue('deductChildCount') * 560000;
+        const valParent = getRawValue('deductParentCount') * 1380000;
+        const valDisabled = getRawValue('deductDisabledCount') * 6930000;
+        const valFuneral = getRawValue('deductFuneral');
+        const valAgri = getRawValue('deductAgri');
+        const valUnpaidTax = getRawValue('deductUnpaidTax');
+        const valDebt = getRawValue('deductDebt');
+        const valPublicLand = getRawValue('deductPublicLand');
+        const val1030 = getRawValue('deduct1030');
+        const valPriorTax = getRawValue('deductPriorTax');
+
+        const totalDeduction = valSpouse + valChild + valParent + valDisabled + 
+                               valFuneral + valAgri + valUnpaidTax + valDebt + 
+                               valPublicLand + val1030 + valPriorTax;
+
+        let net = total - exemption - totalDeduction;
+        if (net < 0) net = 0;
+
+        let tax = 0, rate = 0, diff = 0;
+        if (net <= 56210000) { rate = 10; diff = 0; tax = net * 0.1; } 
+        else if (net <= 112420000) { rate = 15; diff = 2810500; tax = net * 0.15 - diff; } 
+        else { rate = 20; diff = 8431500; tax = net * 0.2 - diff; }
+
+        document.getElementById('estateNetResult').innerText = formatMoney(net);
+        document.getElementById('estateRateResult').innerText = rate + "%";
+        document.getElementById('estateDiffResult').innerText = formatMoney(diff);
+        document.getElementById('estateTaxResult').innerText = formatMoney(Math.round(tax));
+        document.getElementById('totalDeductionDisplay').innerText = formatMoney(totalDeduction);
+        document.getElementById('estateResult').style.display = 'block';
+    }
+
+    // 清除資料
+    function clearAllData() {
+        if(!confirm('確定要清除所有輸入的資料嗎？(稅制預設值將保留)')) return;
+        document.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(input => {
+            if(input.id === 'giftExemption') input.value = "2,440,000";
+            else if(input.id === 'estateExemption') input.value = "13,330,000";
+            else if(input.id === 'deductFuneral') input.value = "1,380,000";
+            else if(input.id === 'deductChildCount') input.value = "2";
+            else if(['deductParentCount', 'deductDisabledCount'].includes(input.id)) input.value = "0";
+            else if(['deductAgri', 'deductUnpaidTax', 'deductDebt', 'deductPublicLand', 'deduct1030', 'deductPriorTax', 'giftDeduction'].includes(input.id)) input.value = "0";
+            else input.value = "";
+        });
+        document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(box => {
+            if(box.id === 'deductSpouseCheck') box.checked = true;
+            else box.checked = false;
+        });
+        document.querySelectorAll('#giftResult, #estateResult').forEach(div => div.style.display = 'none');
+        // 重置問卷頁碼
+        showQPage(1);
+    }
+
+    // 另存存檔
+    function saveAsHTML() {
+        const inputs = document.querySelectorAll('input, textarea');
+        inputs.forEach(input => {
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                if (input.checked) input.setAttribute('checked', 'checked');
+                else input.removeAttribute('checked');
+            } else {
+                input.setAttribute('value', input.value);
+                if (input.tagName === 'TEXTAREA') input.innerHTML = input.value;
+            }
+        });
+        const htmlContent = "<!DOCTYPE html>" + document.documentElement.outerHTML;
+        const blob = new Blob([htmlContent], {type: 'text/html'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '家族傳承規劃_' + new Date().toISOString().slice(0,10) + '.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+</script>
+
+</body>
+</html>
